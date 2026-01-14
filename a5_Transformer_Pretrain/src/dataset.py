@@ -1,5 +1,10 @@
+import math
+import os
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 import random
 import torch
+
+
 from torch.utils.data import Dataset
 import argparse
 
@@ -168,7 +173,33 @@ class CharCorruptionDataset(Dataset):
 
     def __getitem__(self, idx):
         # TODO [part e]: see spec above
-        raise NotImplementedError
+        doc = self.data[idx]
+        trunc_max_len = min(len(doc), int(self.block_size * 7.0 / 8.0))
+
+        if len(doc) < 4:
+            masked_string = self.PAD_CHAR * (self.block_size + 1)
+        else:
+            trunc_len = random.randint(4, trunc_max_len)
+            begin = random.randint(0, len(doc) - trunc_len)
+            truncation = doc[begin : begin + trunc_len]
+            # Span Corruption
+            mask_len = random.randint(1, trunc_len // 2)
+            start = random.randint(0, trunc_len - mask_len)
+
+            prefix = truncation[:start]
+            suffix = truncation[start + mask_len:]
+            masked_content = truncation[start:start + mask_len]
+
+            # Concat the String
+            masked_string = prefix + self.MASK_CHAR + suffix + self.MASK_CHAR + masked_content
+            pad_len = (self.block_size + 1) - len(masked_string)
+            masked_string = masked_string + self.PAD_CHAR * pad_len
+        # Split the masked string into input and output data.
+        inp, out = masked_string[:-1], masked_string[1:]
+        x = torch.tensor([self.stoi[ch] for ch in inp], dtype=torch.long)
+        y = torch.tensor([self.stoi[ch] for ch in out], dtype=torch.long)
+        return x, y
+        # raise NotImplementedError
 
 """
 Code under here is strictly for your debugging purposes; feel free to modify

@@ -72,7 +72,7 @@ class Block(nn.Module):
 class DownProjectBlock(nn.Module):
     """Transformer block used for down projection.
     
-    Initialize similarly to the regular tranformer Block class,
+    Initialize similarly to the regular transformer Block class,
     while using the CausalCrossAttention layer instead of the regular
     CausalSelfAttention layer.
     
