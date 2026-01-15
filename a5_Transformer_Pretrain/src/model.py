@@ -90,20 +90,37 @@ class DownProjectBlock(nn.Module):
         super().__init__()
         ### YOUR CODE HERE
         ### Hint: Copy over the code from Block and make necessary modifications.
-        pass
+        # N * (1, M, D) * (D, D) - (1, M, D)
+        self.C = nn.Parameter(torch.empty(1, config.bottleneck_dim, config.n_embd))
+        nn.init.xavier_uniform_(self.C)
+        # (N, M, D)
+        self.ln1 = nn.LayerNorm(config.n_embd)
+        self.ln2 = nn.LayerNorm(config.n_embd)
+        self.attn = attention.CausalCrossAttention(config)
+        self.mlp = nn.Sequential(
+            nn.Linear(config.n_embd, 4 * config.n_embd),
+            nn.GELU(),
+            nn.Linear(4 * config.n_embd, config.n_embd),
+            nn.Dropout(config.resid_pdrop),
+        )
         ### END YOUR CODE
 
     def forward(self, x_input):
         """Hint: perform cross-attention between x_input and self.C.
         Use the layernorm layers on C, and then on the input to the MLP.
-
         The residual connections are still needed. What tensors can you add to make sure the shapes match?
         """
+        # (N, M, D)
+        c_batch = self.C.expand(x_input.size()[0], -1, -1)
+        # (N, M, D)
+        output = c_batch + self.attn(x_input, self.ln1(c_batch))
+        # (N, M, D)
+        output = output + self.mlp(self.ln2(output))
         ### YOUR CODE HERE
         ### Hint: Copy over the code from Block and make necessary modifications.
         ### Should be around 3-5 lines.
-        pass
         ### END YOUR CODE
+        return output
     
     
 class UpProjectBlock(nn.Module):
@@ -117,7 +134,16 @@ class UpProjectBlock(nn.Module):
         super().__init__()
         ### YOUR CODE HERE
         ### Hint: Copy over the code from Block and make necessary modifications.
-        pass
+        # (1, L, D)
+        self.ln1 = nn.LayerNorm(config.n_embd)
+        self.ln2 = nn.LayerNorm(config.n_embd)
+        self.attn = attention.CausalCrossAttention(config)
+        self.mlp = nn.Sequential(
+            nn.Linear(config.n_embd, 4 * config.n_embd),
+            nn.GELU(),
+            nn.Linear(4 * config.n_embd, config.n_embd),
+            nn.Dropout(config.resid_pdrop),
+        )
         ### END YOUR CODE
     
     def forward(self, y, x_input):
@@ -125,12 +151,14 @@ class UpProjectBlock(nn.Module):
         x_input. 
         Use the layernorm layers on y, and then on the input to the MLP.
         """
+        # (N, L, D) + (N, M, D) - (N, L, D)
+        output = x_input + self.attn(self.ln1(y), x_input)
+        output = output + self.mlp(self.ln2(output))
         ### YOUR CODE HERE
         ### Hint: Copy over the code from Block and make necessary modifications.
         ### Should be around 3-5 lines.
-        pass
         ### END YOUR CODE
-    
+        return output
 
 class GPT(nn.Module):
     """  the full GPT language model, with a context size of block_size """

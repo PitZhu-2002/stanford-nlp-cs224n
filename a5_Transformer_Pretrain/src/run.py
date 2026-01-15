@@ -71,7 +71,11 @@ def main():
         # pass # [part c] Make some model here
     elif args.variant == 'perceiver':
         # set mconf.perceiver, and mconf.bottleneck_dim parameters appropriately.
-        pass # [part g] Make some other model here
+        mconf = GPTConfig(pretrain_dataset.vocab_size, pretrain_dataset.block_size,
+        n_layer=4, n_head=8, n_embd=256, bottleneck_dim=64, perceiver=True)
+        #
+        model = GPT(mconf).to(device)
+        # pass # [part g] Make some other model here
     else:
         raise ValueError("Unknown model variant")
 
